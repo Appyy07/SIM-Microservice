@@ -1,2 +1,2 @@
-# Assignment2026
+# SIM-Microservice
 Microservice with REST/SOAP support and Kubernetes deployment
