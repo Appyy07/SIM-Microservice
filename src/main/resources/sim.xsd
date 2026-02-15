@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:tns="http://example.com/sim"
+           targetNamespace="http://example.com/sim"
+           elementFormDefault="qualified">
+
+    <!-- SIM Activation Request -->
+    <xs:element name="SimActivationRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="msisdn" type="xs:string"/>
+                <xs:element name="simId" type="xs:string"/>
+                <xs:element name="endpoint" type="xs:string" minOccurs="0"/>
+                <xs:element name="plan" type="xs:string"/>
+                <xs:element name="operator" type="xs:string" minOccurs="0"/>
+                <xs:element name="allowances" type="tns:Allowances" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- SIM Activation Response -->
+    <xs:element name="SimActivationResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:long"/>
+                <xs:element name="msisdn" type="xs:string"/>
+                <xs:element name="simId" type="xs:string"/>
+                <xs:element name="endpoint" type="xs:string" minOccurs="0"/>
+                <xs:element name="plan" type="xs:string"/>
+                <xs:element name="operator" type="xs:string" minOccurs="0"/>
+                <xs:element name="status" type="xs:string"/>
+                <xs:element name="allowances" type="tns:Allowances" minOccurs="0"/>
+                <xs:element name="createdAt" type="xs:string"/>
+                <xs:element name="message" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Get SIM Request -->
+    <xs:element name="GetSimRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="simId" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Get SIM Response -->
+    <xs:element name="GetSimResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:long"/>
+                <xs:element name="msisdn" type="xs:string"/>
+                <xs:element name="simId" type="xs:string"/>
+                <xs:element name="endpoint" type="xs:string" minOccurs="0"/>
+                <xs:element name="plan" type="xs:string"/>
+                <xs:element name="operator" type="xs:string" minOccurs="0"/>
+                <xs:element name="status" type="xs:string"/>
+                <xs:element name="allowances" type="tns:Allowances" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Allowances Type -->
+    <xs:complexType name="Allowances">
+        <xs:sequence>
+            <xs:element name="dataAllowance" type="xs:string" minOccurs="0"/>
+            <xs:element name="smsAllowance" type="xs:string" minOccurs="0"/>
+            <xs:element name="voiceAllowance" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>
