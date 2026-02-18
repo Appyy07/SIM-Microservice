@@ -309,7 +309,7 @@ CREATE TABLE sim_records (
     INDEX idx_sim_id (sim_id),
     INDEX idx_msisdn (msisdn)
 );
-
+```
 
 ## Project Structure
 
