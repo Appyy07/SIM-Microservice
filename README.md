@@ -133,7 +133,7 @@ Maven 3.8 or higher
 
 ```bash
 # Clone the repository
-git clone <https://github.com/Appyy07/SIM-Microservice.git>
+git clone https://github.com/Appyy07/SIM-Microservice.git
 cd sim-microservice
 
 # Build the project
