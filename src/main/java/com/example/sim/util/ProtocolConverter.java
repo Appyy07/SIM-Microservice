@@ -97,26 +97,85 @@ public class ProtocolConverter {
      * @return SimRecord object
      */
     public SimRecord fromSoapXml(String soapXml) {
-        log.debug("Parsing SOAP XML to SimRecord");
+        log.debug("Parsing SOAP XML:\n{}", soapXml);
 
         SimRecord record = new SimRecord();
 
         try {
-            // Simple XML parsing (in production, use JAXB or DOM parser)
-            record.setMsisdn(extractValue(soapXml, "msisdn"));
-            record.setSimId(extractValue(soapXml, "simId"));
-            record.setEndpoint(extractValue(soapXml, "endpoint"));
-            record.setPlan(extractValue(soapXml, "plan"));
-            record.setOperator(extractValue(soapXml, "operator"));
-            record.setStatus(extractValue(soapXml, "status"));
+            // ─────────────────────────────────────
+            // Parse core fields
+            // ─────────────────────────────────────
+            String msisdn = extractValue(soapXml, "msisdn");
+            String simId = extractValue(soapXml, "simId");
+            String plan = extractValue(soapXml, "plan");
+            String operator = extractValue(soapXml, "operator");
 
-            SimRecord.Allowances allowances = new SimRecord.Allowances();
-            allowances.setDataAllowance(extractValue(soapXml, "data"));
-            allowances.setSmsAllowance(extractValue(soapXml, "sms"));
-            allowances.setVoiceAllowance(extractValue(soapXml, "voice"));
-            record.setAllowances(allowances);
+            // ─────────────────────────────────────
+            // Fix: Try multiple tag names for endpoint
+            // Client might send <endpoint> or <sim:endpoint>
+            // ─────────────────────────────────────
+            String endpoint = extractValue(soapXml, "endpoint");
+            if (endpoint == null || endpoint.trim().isEmpty()) {
+                endpoint = extractValue(soapXml, "sim:endpoint");
+            }
+            if (endpoint == null || endpoint.trim().isEmpty()) {
+                endpoint = "NOT_SPECIFIED";
+            }
 
-            log.debug("Parsed SimRecord: {}", record.getSimId());
+            // ─────────────────────────────────────
+            // Fix: Always set status to ACTIVE
+            // Never read from SOAP - we decide status
+            // ─────────────────────────────────────
+            String status = "ACTIVE";
+
+            // ─────────────────────────────────────
+            // Fix: Try multiple tag names for allowances
+            // Client might send <data> or <dataAllowance>
+            // ─────────────────────────────────────
+            String dataAllowance = extractValue(soapXml, "dataAllowance");
+            if (dataAllowance == null || dataAllowance.trim().isEmpty()) {
+                dataAllowance = extractValue(soapXml, "data");
+            }
+
+            String smsAllowance = extractValue(soapXml, "smsAllowance");
+            if (smsAllowance == null || smsAllowance.trim().isEmpty()) {
+                smsAllowance = extractValue(soapXml, "sms");
+            }
+
+            String voiceAllowance = extractValue(soapXml, "voiceAllowance");
+            if (voiceAllowance == null || voiceAllowance.trim().isEmpty()) {
+                voiceAllowance = extractValue(soapXml, "voice");
+            }
+
+            // ─────────────────────────────────────
+            // Set all fields on record
+            // ─────────────────────────────────────
+            record.setMsisdn(msisdn);
+            record.setSimId(simId);
+            record.setPlan(plan);
+            record.setOperator(operator);
+            record.setEndpoint(endpoint);
+            record.setStatus(status);
+
+            // Set allowances if any present
+            if ((dataAllowance != null && !dataAllowance.isEmpty()) ||
+                    (smsAllowance != null && !smsAllowance.isEmpty()) ||
+                    (voiceAllowance != null && !voiceAllowance.isEmpty())) {
+
+                SimRecord.Allowances allowances = new SimRecord.Allowances();
+                allowances.setDataAllowance(dataAllowance);
+                allowances.setSmsAllowance(smsAllowance);
+                allowances.setVoiceAllowance(voiceAllowance);
+                record.setAllowances(allowances);
+            }
+
+            log.info("SOAP parsed successfully:");
+            log.info("  msisdn    : {}", record.getMsisdn());
+            log.info("  simId     : {}", record.getSimId());
+            log.info("  plan      : {}", record.getPlan());
+            log.info("  operator  : {}", record.getOperator());
+            log.info("  endpoint  : {}", record.getEndpoint());
+            log.info("  status    : {}", record.getStatus());
 
         } catch (Exception e) {
             log.error("Error parsing SOAP XML: {}", e.getMessage());

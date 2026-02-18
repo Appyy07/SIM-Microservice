@@ -15,10 +15,8 @@ import java.time.Duration;
 
 /**
  * Southbound Service
- * 
- * Handles all calls to backend systems
- * Supports both REST and SOAP protocols
- * Routes based on endpointId and configuration
+ * Calls backend systems with minimal payload
+ * Logs EXACTLY what southbound receives for demonstration
  */
 @Service
 @RequiredArgsConstructor
@@ -30,98 +28,150 @@ public class SouthboundService {
     private final WebClient.Builder webClientBuilder;
 
     /**
-     * Call southbound backend
-     * 
-     * @param endpointId The endpoint identifier (backend1, backend2, etc.)
-     * @param request    The minimal payload (simId + plan)
-     * @return Response from backend
+     * Main entry point
+     * Decides REST or SOAP based on config
      */
     public String callSouthbound(String endpointId, SouthboundRequest request) {
-
-        log.info("Calling southbound with endpointId: {}", endpointId);
 
         // Get configuration for this endpoint
         SouthboundConfig.EndpointConfig config = southboundConfig.getEndpointOrThrow(endpointId);
 
-        log.info("Endpoint config - URL: {}, Protocol: {}", config.getUrl(), config.getProtocol());
+        log.info("╔══════════════════════════════════════════════════╗");
+        log.info("║           SOUTHBOUND SELECTION                   ║");
+        log.info("╠══════════════════════════════════════════════════╣");
+        log.info("║  EndpointId : {}", endpointId);
+        log.info("║  URL        : {}", config.getUrl());
+        log.info("║  Protocol   : {}", config.getProtocol());
+        log.info("╚══════════════════════════════════════════════════╝");
 
-        // Route based on protocol
+        // Route based on protocol from config
         if ("SOAP".equalsIgnoreCase(config.getProtocol())) {
             return callSoapBackend(config, request);
-        } else if ("REST".equalsIgnoreCase(config.getProtocol())) {
-            return callRestBackend(config, request);
         } else {
-            throw new IllegalArgumentException("Unsupported protocol: " + config.getProtocol());
+            return callRestBackend(config, request);
         }
     }
 
     /**
      * Call REST backend
+     * Logs exact payload sent to backend
      */
-    private String callRestBackend(SouthboundConfig.EndpointConfig config, SouthboundRequest request) {
+    private String callRestBackend(
+            SouthboundConfig.EndpointConfig config,
+            SouthboundRequest request) {
 
-        log.info("Calling REST backend: {}", config.getUrl());
+        // ════════════════════════════════════════
+        // LOG WHAT SOUTHBOUND RECEIVES
+        // ════════════════════════════════════════
+        log.info("╔══════════════════════════════════════════════════╗");
+        log.info("║        SOUTHBOUND BACKEND RECEIVES (REST)        ║");
+        log.info("╠══════════════════════════════════════════════════╣");
+        log.info("║  URL         : {}", config.getUrl());
+        log.info("║  Method      : POST");
+        log.info("║  Format      : application/json");
+        log.info("║  ──────────────────────────────────────────────  ║");
+        log.info("║  PAYLOAD SENT:                                   ║");
+        log.info("║  {{                                               ║");
+        log.info("║    simId : \"{}\"", request.getSimId());
+        log.info("║    plan  : \"{}\"", request.getPlan());
+        log.info("║  }}                                               ║");
+        log.info("║  ──────────────────────────────────────────────  ║");
+        log.info("║  NOT SENT TO BACKEND:                            ║");
+        log.info("║  ✗ msisdn     (privacy)                         ║");
+        log.info("║  ✗ operator   (not needed)                      ║");
+        log.info("║  ✗ allowances (backend has own config)          ║");
+        log.info("╚══════════════════════════════════════════════════╝");
 
         try {
             WebClient webClient = webClientBuilder.build();
 
             String response = webClient.post()
                     .uri(config.getUrl())
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .header(HttpHeaders.CONTENT_TYPE,
+                            MediaType.APPLICATION_JSON_VALUE)
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(String.class)
                     .timeout(Duration.ofMillis(config.getTimeout()))
                     .block();
 
-            log.info("REST backend response received");
-            log.debug("Response: {}", response);
+            log.info("╔══════════════════════════════════════════════════╗");
+            log.info("║        SOUTHBOUND RESPONSE (REST)                ║");
+            log.info("╠══════════════════════════════════════════════════╣");
+            log.info("║  Response : {}", response);
+            log.info("╚══════════════════════════════════════════════════╝");
 
             return response != null ? response : "{}";
 
         } catch (Exception e) {
-            log.error("Error calling REST backend: {}", e.getMessage());
-            throw new RuntimeException("Southbound REST call failed: " + e.getMessage(), e);
+            log.error("REST backend call failed: {}", e.getMessage());
+            throw new RuntimeException(
+                    "Southbound REST call failed", e);
         }
     }
 
     /**
      * Call SOAP backend
+     * Logs exact SOAP XML sent to backend
      */
-    private String callSoapBackend(SouthboundConfig.EndpointConfig config, SouthboundRequest request) {
+    private String callSoapBackend(
+            SouthboundConfig.EndpointConfig config,
+            SouthboundRequest request) {
 
-        log.info("Calling SOAP backend: {}", config.getUrl());
+        // Convert to SOAP XML first
+        String soapXml = protocolConverter.toSoapXml(request);
+
+        // ════════════════════════════════════════
+        // LOG WHAT SOUTHBOUND RECEIVES
+        // ════════════════════════════════════════
+        log.info("╔══════════════════════════════════════════════════╗");
+        log.info("║        SOUTHBOUND BACKEND RECEIVES (SOAP)        ║");
+        log.info("╠══════════════════════════════════════════════════╣");
+        log.info("║  URL         : {}", config.getUrl());
+        log.info("║  Method      : POST");
+        log.info("║  Format      : text/xml");
+        log.info("║  ──────────────────────────────────────────────  ║");
+        log.info("║  PAYLOAD SENT:                                   ║");
+        log.info("╚══════════════════════════════════════════════════╝");
+        log.info("{}", soapXml);
+        log.info("╔══════════════════════════════════════════════════╗");
+        log.info("║  NOT SENT TO BACKEND:                            ║");
+        log.info("║  ✗ msisdn     (privacy)                         ║");
+        log.info("║  ✗ operator   (not needed)                      ║");
+        log.info("║  ✗ allowances (backend has own config)          ║");
+        log.info("╚══════════════════════════════════════════════════╝");
 
         try {
-            // Convert to SOAP XML
-            String soapRequest = protocolConverter.toSoapXml(request);
-
-            log.debug("SOAP request: {}", soapRequest);
-
             WebClient webClient = webClientBuilder.build();
 
             String response = webClient.post()
                     .uri(config.getUrl())
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML_VALUE)
+                    .header(HttpHeaders.CONTENT_TYPE,
+                            MediaType.TEXT_XML_VALUE)
                     .header("SOAPAction", "\"\"")
-                    .bodyValue(soapRequest)
+                    .bodyValue(soapXml)
                     .retrieve()
                     .bodyToMono(String.class)
                     .timeout(Duration.ofMillis(config.getTimeout()))
                     .onErrorResume(e -> {
-                        log.error("SOAP call error: {}", e.getMessage());
-                        return Mono.just("<error>Backend unavailable</error>");
+                        log.error("SOAP error: {}", e.getMessage());
+                        return Mono.just(
+                                "<error>Backend unavailable</error>");
                     })
                     .block();
 
-            log.info("SOAP backend response received");
-            log.debug("Response: {}", response);
+            log.info("╔══════════════════════════════════════════════════╗");
+            log.info("║        SOUTHBOUND RESPONSE (SOAP)                ║");
+            log.info("╠══════════════════════════════════════════════════╣");
+            log.info("║  Response : {}", response);
+            log.info("╚══════════════════════════════════════════════════╝");
 
             return response != null ? response : "<empty/>";
 
         } catch (Exception e) {
-            log.error("Error calling SOAP backend: {}", e.getMessage());
-            throw new RuntimeException("Southbound SOAP call failed: " + e.getMessage(), e);
+            log.error("SOAP backend call failed: {}", e.getMessage());
+            throw new RuntimeException(
+                    "Southbound SOAP call failed", e);
         }
     }
 }

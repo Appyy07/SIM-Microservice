@@ -101,8 +101,13 @@ public class SimRecord {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) {
+        // Fix: check null AND blank
+        if (status == null || status.trim().isEmpty()) {
             status = "ACTIVE";
+        }
+        // Fix: if endpoint still null, set default
+        if (endpoint == null || endpoint.trim().isEmpty()) {
+            endpoint = "NOT_SPECIFIED";
         }
     }
 
